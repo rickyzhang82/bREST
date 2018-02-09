@@ -138,7 +138,7 @@
 
 class aREST {
 
-private:
+protected:
 struct Variable {
   virtual void addToBuffer(aREST *arest) const = 0;
 };
@@ -179,6 +179,8 @@ aREST(char* rest_remote_server, int rest_port) {
   port = rest_port;
 
 }
+
+virtual ~aREST() {}
 
 template<typename T>
 void variable(const char *name, T *var) { 
@@ -348,7 +350,7 @@ void send_http_headers(){
 }
 
 // Reset variables after a request
-void reset_status() {
+virtual void reset_status() {
 
   if (DEBUG_MODE) {
     #if defined(ESP8266)|| defined (ESP32)
@@ -909,7 +911,7 @@ void reconnect(PubSubClient& client) {
 }
 #endif
 
-void process(char c){
+virtual void process(char c){
 
   // Check if we are receveing useful data and process it
   if ((c == '/' || c == '\r') && state == 'u') {
@@ -1135,7 +1137,7 @@ void urldecode(String &arguments) {
 }
 
 
-bool send_command(bool headers, bool decodeArgs) {
+virtual bool send_command(bool headers, bool decodeArgs) {
 
    if (DEBUG_MODE) {
 
@@ -1840,7 +1842,7 @@ void setMQTTServer(char* new_mqtt_server){
 }
 #endif
 
-private:
+protected:
   String answer;
   char command;
   uint8_t pin;
