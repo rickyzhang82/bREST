@@ -30,6 +30,13 @@ typedef enum {
     HTTP_METHOD_UNSET
 } HTTP_METHOD;
 
+//define bREST class
+class bREST;
+
+/**
+ * @brief The Observer class is an abstract class for subscribed resource.
+ * @details The virtual pure method update() is a call back method for corresponding RESTful API call.
+ */
 class Observer {
 protected:
     String id;
@@ -39,7 +46,15 @@ public:
     }
 
     virtual ~Observer() {}
-    virtual void update(HTTP_METHOD method, String parms[], String value[], int parm_count) = 0;
+    /**
+     * @brief update a call back method by bREST class.
+     * @param method HTTP method of RESTful request
+     * @param parms an array of parameter of RESTful request
+     * @param value an array of value of RESTful request
+     * @param parm_count number of element in parameter array. It assumes that the number of element between parameter array and value array are the same.
+     * @param rest bREST object for appending returned JSON message
+     */
+    virtual void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) = 0;
 
     /**
      * @brief get_resource_id get resource ID
@@ -86,6 +101,11 @@ public:
         observer_counter = 0;
     }
 
+    /**
+     * @brief bREST constructor
+     * @param rest_remote_server REST server IP
+     * @param rest_port REST server port number
+     */
     bREST(char* rest_remote_server, int rest_port): aREST(rest_remote_server, rest_port) {
         reset_state_vars();
         observer_counter = 0;
@@ -94,7 +114,7 @@ public:
     virtual ~bREST() override {}
 
     /**
-     * @brief subscribe add new resource to REST server
+     * @brief add_observer add new resource to REST server
      * @param new_resource
      * @return true if successful. Otherwise, false
      */
@@ -107,9 +127,66 @@ public:
         }
     }
 
+    /**
+     * @brief append_key_value_pair_to_json Add key value pair to returned JSON message.
+     * @param key
+     * @param value
+     */
+    void append_key_value_pair_to_json(const String& key, bool value) {
+        append_key_to_json(key);
+        addToBuffer(value, false);
+    }
+
+    /**
+     * @brief append_key_value_pair_to_json Add key value pair to returned JSON message.
+     * @param key
+     * @param value
+     */
+    void append_key_value_pair_to_json(const String& key, const String& value) {
+        append_key_to_json(key);
+        addToBuffer(value, true);
+    }
+
+    /**
+     * @brief append_key_value_pair_to_json Add key value pair to returned JSON message.
+     * @param key
+     * @param value
+     */
+    void append_key_value_pair_to_json(const String& key, int value) {
+        append_key_to_json(key);
+        addToBuffer(value, false);
+    }
+
+    /**
+     * @brief append_key_value_pair_to_json Add key value pair to returned JSON message.
+     * @param key
+     * @param value
+     */
+    void append_key_value_pair_to_json(const String& key, float value) {
+        append_key_to_json(key);
+        addToBuffer(value, false);
+    }
+
+    /**
+     * @brief append_key_value_pair_to_json Add key value pair to returned JSON message.
+     * @param key
+     * @param value
+     */
+    void append_key_value_pair_to_json(const String& key, const char* value) {
+        append_key_to_json(key);
+        addToBuffer(value, true);
+    }
+
+    /**
+     * @brief append_comma_to_json Add comma separator to JSON message.
+     */
+    void append_comma_to_json() {
+        addToBufferF(F(","));
+    }
+
 protected:
     /**
-     * @brief process method parses one and only one Request-Line i.e. (Method SP Request-URI SP HTTP-Version CRLF). Disregard the rest of HTTP conversation.
+     * @brief process parses one and only one Request-Line i.e. (Method SP Request-URI SP HTTP-Version CRLF). Disregard the rest of HTTP conversation.
      *
      * @details
      *  - Support two methods: GET and PUT. Disregard the rest of HTTP methods.
@@ -192,7 +269,7 @@ protected:
         case STATE_IGNORE:
             // once get LF, return to start state
             if (c== '\n')
-                parser_state = STATE_START;
+                reset_state_vars();
             break;
         }
 
@@ -237,23 +314,46 @@ protected:
         Serial.println("**********************************");
 #endif
 
-        notify_observers();
+        if(!notify_observers(headers)) {
+            if(headers)
+                append_http_header(true);
+            addToBufferF(F("{\"message\": \"Request has been processed. But no observers are activated!\"}\r\n"));
+        }
 
-        if(headers)
-            append_http_header(true);
-        addToBufferF(F("{\"message\": \"Finished!\"}\r\n"));
         return true;
 
     }
 
-    void notify_observers() {
+    /**
+     * @brief notify_observers notifies subscribed observer to process HTTP request.
+     * @param headers should include HTTP headers
+     * @return true if trigger any observer update. Otherwise, false.
+     */
+    bool notify_observers(bool headers) {
+        bool is_observer_fired = false;
+
         for (int i = 0 ; i < observer_counter; i++) {
+
             Observer* p_resource = observer_list[i];
+
             if(p_resource->get_id().equalsIgnoreCase(resource_id)) {
-                //TODO add buffer
-                p_resource->update(http_method, parms, value, parm_counter);
+                is_observer_fired = true;
+
+                if(headers)
+                    append_http_header(true);
+
+                // wrap JSON left bracket
+                addToBufferF(F("{"));
+
+                // fire resource call back
+                p_resource->update(http_method, parms, value, parm_counter, this);
+
+                // wrap JSON right bracket
+                addToBufferF(F("}\r\n"));
             }
         }
+
+        return is_observer_fired;
     }
 
     void append_http_header(bool isOK) {
@@ -273,6 +373,12 @@ protected:
         if (headers)
             append_http_header(false);
         addToBufferF(F("{\"message\": \"Invalid URL request!\"}\r\n"));
+    }
+
+    void append_key_to_json(const String& key) {
+        addToBufferF(F("\""));
+        addToBuffer(key, false);
+        addToBufferF(F("\":"));
     }
 
     /**
@@ -349,6 +455,9 @@ protected:
         reset_state_vars();
     }
 
+    /**
+     * @brief reset_state_vars reset state variable for every line of HTTP conversation.
+     */
     void reset_state_vars() {
         parser_state = STATE_START;
         http_method = HTTP_METHOD_UNSET;

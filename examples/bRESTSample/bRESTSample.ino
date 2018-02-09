@@ -28,28 +28,36 @@ WiFiServer server(LISTEN_PORT);
 
 // Step1: Define customized resource by inheriting Observer
 //        Override call back method update()
-class SerialPortResource: public Observer {
+class CaculatorResource: public Observer {
 public:
-    SerialPortResource(String resource_id): Observer(resource_id) {}
-    virtual ~SerialPortResource(){}
+    CaculatorResource(String resource_id): Observer(resource_id) {}
+    virtual ~CaculatorResource(){}
     // override call back function
-    void update(HTTP_METHOD method, String parms[], String value[], int parm_count) override {
+    void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
         Serial.println("*************************************");
         Serial.println("fire SerialPort update()!");
         Serial.print("HTTP Method:");
         Serial.println(get_method(method));
         Serial.println("Parameters and Value:");
+        float sum = 0;
+        // Iterate parameter array and value array
         for (int i = 0; i < parm_count; i++) {
             Serial.print(parms[i]);
             Serial.print(" = ");
             Serial.println(value[i]);
+            sum += value[i].toFloat();
         }
         Serial.println("*************************************");
+        // Send back JSON message to client.
+        rest->append_key_value_pair_to_json(String("message"), String("CaculatorResource get fire up!"));
+        rest->append_comma_to_json();
+        rest->append_key_value_pair_to_json(String("sum"), sum);
+
     }
 };
 
 // Step 2: Allocate resource with unique ID
-SerialPortResource mySerialPort("serial0");
+CaculatorResource myESP8266Caculator("calc");
 
 void setup(void)
 {
@@ -72,8 +80,9 @@ void setup(void)
 
   // Print the IP address
   Serial.println(WiFi.localIP());
+
   // Step 3: Add observer
-  rest.add_observer(&mySerialPort);
+  rest.add_observer(&myESP8266Caculator);
 }
 
 void loop() {
