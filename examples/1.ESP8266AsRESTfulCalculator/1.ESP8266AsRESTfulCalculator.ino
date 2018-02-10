@@ -36,10 +36,10 @@ WiFiServer server(LISTEN_PORT);
 
 // Step1: Define customized resource by inheriting Observer
 //        Override call back method update()
-class CaculatorResource: public Observer {
+class CalculatorResource: public Observer {
 public:
-    CaculatorResource(String resource_id): Observer(resource_id) {}
-    virtual ~CaculatorResource(){}
+    CalculatorResource(String resource_id): Observer(resource_id) {}
+    virtual ~CalculatorResource(){}
     // override call back function
     void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
         Serial.println("*************************************");
@@ -58,7 +58,7 @@ public:
         Serial.println("*************************************");
         // Send back JSON message to client.
         rest->start_json_msg();
-        rest->append_key_value_pair_to_json(String("message"), String("CaculatorResource get fire up!"));
+        rest->append_key_value_pair_to_json(String("message"), String("CalculatorResource get fire up!"));
         rest->append_comma_to_json();
         rest->append_key_value_pair_to_json(String("code"), CODE_OK);
         rest->append_comma_to_json();
@@ -68,7 +68,7 @@ public:
 };
 
 // Step 2: Allocate resource with unique ID
-CaculatorResource myESP8266Caculator("calc");
+CalculatorResource myESP8266Calculator("calc");
 
 void setup(void)
 {
@@ -93,7 +93,7 @@ void setup(void)
   Serial.println(WiFi.localIP());
 
   // Step 3: Add observer
-  rest.add_observer(&myESP8266Caculator);
+  rest.add_observer(&myESP8266Calculator);
 }
 
 void loop() {
