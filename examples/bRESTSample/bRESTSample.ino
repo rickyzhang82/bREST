@@ -49,10 +49,11 @@ public:
         }
         Serial.println("*************************************");
         // Send back JSON message to client.
+        rest->start_json_msg();
         rest->append_key_value_pair_to_json(String("message"), String("CaculatorResource get fire up!"));
         rest->append_comma_to_json();
         rest->append_key_value_pair_to_json(String("sum"), sum);
-
+        rest->end_json_msg();
     }
 };
 

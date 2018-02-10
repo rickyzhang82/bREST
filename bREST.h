@@ -5,7 +5,7 @@
 
 #define DEBUG 0
 
-const int MAX_URL_LENGTH    = 1024;
+const int MAX_URL_LENGTH    = 256;
 const int MAX_NUM_PARMS     = 10;
 const int MAX_NUM_RESOURCES = 20;
 
@@ -184,6 +184,22 @@ public:
         addToBufferF(F(","));
     }
 
+    /**
+     * @brief start_json_msg start JSON message.
+     */
+    void start_json_msg() {
+        // wrap JSON left bracket
+        addToBufferF(F("{"));
+    }
+
+    /**
+     * @brief end_json_msg end JSON message.
+     */
+    void end_json_msg() {
+        // wrap JSON right bracket
+        addToBufferF(F("}\r\n"));
+    }
+
 protected:
     /**
      * @brief process parses one and only one Request-Line i.e. (Method SP Request-URI SP HTTP-Version CRLF). Disregard the rest of HTTP conversation.
@@ -342,14 +358,8 @@ protected:
                 if(headers)
                     append_http_header(true);
 
-                // wrap JSON left bracket
-                addToBufferF(F("{"));
-
                 // fire resource call back
                 p_resource->update(http_method, parms, value, parm_counter, this);
-
-                // wrap JSON right bracket
-                addToBufferF(F("}\r\n"));
             }
         }
 
