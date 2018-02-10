@@ -24,17 +24,17 @@ Compared to aREST, bREST is more
 - Flexible input and output. Zero restriction on the number of input parameters from URL. Zero restriction on the return of JSON.
 
 ## How
-First, clone bREST repo to your `Arduino/libraries`
+First, clone bREST repo to your `Arduino/libraries`.
 
-Secondly, design your customized class by inheriting class `Observer` and overriding call back method `update()`. Conceptually, your class should be one of resource such as servo, serial port or even a pin.
+Secondly, create your customized class by inheriting class `Observer`. Conceptually, your class should be one of resource such as servo, serial port or even a pin.
 
-Thirdly, add your customized resource object to `bREST` observers list. `bREST` will invoke call back method if HTTP request matches your resource ID.
+Thirdly, design your resource RESTful interface by overriding `update()` virtual method.
 
-In the sample code below, we created a customized resource called `CaculatorResource`. It takes numeric parameters from HTTP request and returns summation result in JSON. A simple URL from any web browser such as `http://your_esp8266_ip/calc/?input1=1.2&input2=23&input3=-2` will return a JSON message:
+Last but not the least, add your customized resource object to `bREST` observers list. `bREST` will invoke call proper back method if HTTP request matches your resource ID.
+
+Let's take a quick look into a sample. In the [sample code](https://github.com/rickyzhang82/bREST/blob/master/examples/1.ESP8266AsRESTfulCaculator/1.ESP8266AsRESTfulCaculator.ino), we created a customized resource called `CaculatorResource`. What it does is to take any numeric parameters from HTTP request and returns summation result in JSON. A simple URL from any web browser such as `http://your_esp8266_ip/calc/?input1=1.2&input2=23&input3=-2` will return a JSON message:
 
 ```
-{"message":"CaculatorResource get fire up!","sum":22.2}
+{"message":"CaculatorResource get fire up!", "code":200 ,"sum":22.2}
 ```
 Any illegal HTTP request or invoking resource that is not registered in `bREST` observer list will return proper error JSON message.
-
-See Step 1, Step 2 and Step 3 in [sample code](https://github.com/rickyzhang82/aREST/blob/dev-public/examples/bRESTSample/bRESTSample.ino).
