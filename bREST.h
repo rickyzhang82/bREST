@@ -30,6 +30,14 @@ typedef enum {
     HTTP_METHOD_UNSET
 } HTTP_METHOD;
 
+typedef enum {
+    CODE_OK                             = 200,
+    CODE_ERROR_NO_VALID_DATA            = 501,
+    CODE_ERROR_URL_PARSING_OVERFLOW     = 502,
+    CODE_ERROR_INVALID_URL              = 503,
+    CODE_ERROR_NO_OBSERVERS_ACTIVATED   = 504
+} MESSAGE_STATUS_CODE;
+
 //define bREST class
 class bREST;
 
@@ -318,24 +326,24 @@ protected:
         }
 
 #if DEBUG
-        Serial.println("**********************************");
-        Serial.print("Resource:");
-        Serial.println(resource);
-        for(int i = 0; i < parm_counter; i++) {
-            Serial.print("Parm:");
+        Serial.print(" Debug bREST.send_command() -- ");
+        Serial.print("Method: ");
+        Serial.print(this->get_method(method));
+        for(int i = 0; i < parm_count; i++) {
+            Serial.print(" Parm:");
             Serial.print(parms[i]);
             Serial.print("=");
-            Serial.println(value[i]);
+            Serial.print(value[i]);
         }
-        Serial.println("**********************************");
+        Serial.print(" Debug end -- ");
 #endif
 
         if(!notify_observers(headers)) {
             if(headers) {
                 append_http_header(true);
-                addToBufferF(F("{\"message\": \"Request has been processed. But no observers are activated!\"}\r\n"));
+                addToBufferF(F("{\"message\":\"Request has been processed. But no observers are activated!\",\"code\":504}\r\n"));
             } else {
-                addToBufferF(F("\"message\": \"Request has been processed. But no observers are activated!\"\n"));
+                addToBufferF(F("\"message\":\"Request has been processed. But no observers are activated!\",\"code\":504\n"));
             }
         }
 
@@ -377,15 +385,21 @@ protected:
     }
 
     void append_msg_overflow(bool headers) {
-        if (headers)
+        if (headers) {
             append_http_header(false);
-        addToBufferF(F("{\"message\": \"URL parsing overflow!\"}\r\n"));
+            addToBufferF(F("{\"message\":\"URL parsing overflow!\",\"code\":502}\r\n"));
+        } else {
+            addToBufferF(F("\"message\":\"URL parsing overflow!\",\"code\":502\n"));
+        }
     }
 
     void append_msg_invalid_request(bool headers) {
-        if (headers)
+        if (headers) {
             append_http_header(false);
-        addToBufferF(F("{\"message\": \"Invalid URL request!\"}\r\n"));
+            addToBufferF(F("{\"message\":\"Invalid URL request!\",\"code\":503}\r\n"));
+        } else {
+            addToBufferF(F("\"message\":\"Invalid URL request!\",\"code\":503\n"));
+        }
     }
 
     void append_key_to_json(const String& key) {
