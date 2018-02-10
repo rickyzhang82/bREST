@@ -1556,6 +1556,11 @@ void addQuote() {
   }  
 }
 
+void addToBufferFromSerialPort(const char * toAdd) {
+    for (int i = 0; i < strlen(toAdd) && index < OUTPUT_BUFFER_SIZE; i++, index++)
+      buffer[index] = toAdd[i];
+}
+
 // Add to output buffer
 void addToBuffer(const char * toAdd, bool quotable){
 

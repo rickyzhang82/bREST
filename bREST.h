@@ -331,9 +331,12 @@ protected:
 #endif
 
         if(!notify_observers(headers)) {
-            if(headers)
+            if(headers) {
                 append_http_header(true);
-            addToBufferF(F("{\"message\": \"Request has been processed. But no observers are activated!\"}\r\n"));
+                addToBufferF(F("{\"message\": \"Request has been processed. But no observers are activated!\"}\r\n"));
+            } else {
+                addToBufferF(F("\"message\": \"Request has been processed. But no observers are activated!\"\n"));
+            }
         }
 
         return true;
