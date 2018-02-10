@@ -1,11 +1,11 @@
 {
-  "name": "aREST",
+  "name": "bREST",
   "keywords": "REST, wifi, ethernet, http, web, server, json, spi",
   "description": "RESTful API for Arduino using HTTP or Serial communications",
   "repository":
   {
     "type": "git",
-    "url": "https://github.com/marcoschwartz/aREST.git"
+    "url": "https://github.com/rickyzhang82/bREST.git"
   },
   "frameworks": "arduino",
   "platforms":
