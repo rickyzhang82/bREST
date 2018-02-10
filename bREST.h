@@ -1,3 +1,6 @@
+/*
+  bREST library for Arduino. A fork from aREST repo.
+*/
 #ifndef bREST_H
 #define bREST_H
 

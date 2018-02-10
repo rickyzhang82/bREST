@@ -4,6 +4,14 @@
 
   Written in 2015 by Marco Schwartz under a GPL license.
 */
+/*
+  This sample code demo a caculator resource hosted in ESP8266 chip. It returns sum value from request.
+  It demos:
+  - how to use observer pattern for customized resource class
+  - how to take arbitary number of parameter and value from URL.
+  - how to return an arbitary JSON string back to client.
+  Update by Ricky Zhang in 2018
+*/
 
 // Import required libraries
 #include <ESP8266WiFi.h>
@@ -51,6 +59,8 @@ public:
         // Send back JSON message to client.
         rest->start_json_msg();
         rest->append_key_value_pair_to_json(String("message"), String("CaculatorResource get fire up!"));
+        rest->append_comma_to_json();
+        rest->append_key_value_pair_to_json(String("code"), CODE_OK);
         rest->append_comma_to_json();
         rest->append_key_value_pair_to_json(String("sum"), sum);
         rest->end_json_msg();
