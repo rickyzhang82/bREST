@@ -50,7 +50,27 @@ class bREST;
  */
 class Observer {
 protected:
+    // unique resource ID
     String id;
+
+    /**
+     * @brief find_parm find the index of parameters for key
+     * @param parms parameter arrays
+     * @param parm_count the number of parameter array
+     * @param key parameter key
+     * @return index of parameter if key is found. Otherwise, return -1
+     */
+    int find_parm(String parms[], int parm_count, const String& key) {
+        int found_index = -1;
+        for (int i = 0; i < parm_count; i++) {
+            if (parms[i].equalsIgnoreCase(key)) {
+                found_index = i;
+                break;
+            }
+        }
+        return found_index;
+    }
+
 public:
     Observer(String id) {
         this->id = id;
