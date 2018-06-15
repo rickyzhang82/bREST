@@ -4,9 +4,17 @@
 #ifndef bREST_H
 #define bREST_H
 
+#include <stdarg.h>
+
 #include "aREST.h"
 
+#ifndef DEBUG
 #define DEBUG 0
+#endif
+
+#ifndef APP_DEBUG
+#define APP_DEBUG 0
+#endif
 
 const int MAX_URL_LENGTH    = 256;
 const int MAX_NUM_PARMS     = 10;
@@ -38,7 +46,8 @@ typedef enum {
     CODE_ERROR_NO_VALID_DATA            = 501,
     CODE_ERROR_URL_PARSING_OVERFLOW     = 502,
     CODE_ERROR_INVALID_URL              = 503,
-    CODE_ERROR_NO_OBSERVERS_ACTIVATED   = 504
+    CODE_ERROR_NO_OBSERVERS_ACTIVATED   = 504,
+    CODE_ERROR_INVALID_COMMAND          = 505
 } MESSAGE_STATUS_CODE;
 
 //define bREST class
@@ -69,6 +78,15 @@ protected:
             }
         }
         return found_index;
+    }
+
+    void log(String fmt,...) {
+#if APP_DEBUG
+        va_list args;
+        va_start(args, fmt);
+        aprintf(fmt.c_str(), args);
+        va_end(args);
+#endif
     }
 
 public:
@@ -109,6 +127,45 @@ public:
         default:
             return "UNSET";
         }
+    }
+
+private:
+    int aprintf(const char* str, ...) {
+        int i, j, count = 0;
+        va_list argv;
+        va_start(argv, str);
+        for(i = 0, j = 0; str[i] != '\0'; i++) {
+            if (str[i] == '%') {
+                count++;
+
+                Serial.write(reinterpret_cast<const uint8_t*>(str+j), i-j);
+
+                switch (str[++i]) {
+                    case 'd': Serial.print(va_arg(argv, int));
+                        break;
+                    case 'l': Serial.print(va_arg(argv, long));
+                        break;
+                    case 'f': Serial.print(va_arg(argv, double));
+                        break;
+                    case 'c': Serial.print((char) va_arg(argv, int));
+                        break;
+                    case 's': Serial.print(va_arg(argv, char *));
+                        break;
+                    case '%': Serial.print("%");
+                        break;
+                    default:;
+                };
+
+                j = i+1;
+            }
+        };
+        va_end(argv);
+
+        if(i > j) {
+            Serial.write(reinterpret_cast<const uint8_t*>(str+j), i-j);
+        }
+
+        return count;
     }
 };
 
