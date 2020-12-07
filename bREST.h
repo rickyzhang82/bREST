@@ -500,9 +500,9 @@ protected:
         }
 
 #if DEBUG
-        Observer::log("bREST::send_command() -- Method: %s", bREST::get_method(http_method));
+        Observer::log("bREST::send_command() -- Method: %s", bREST::get_method(http_method).c_str());
         for(int i = 0; i < parm_counter; i++) {
-            Observer::log(", Parm: %s = %s", parms[i], value[i]);
+            Observer::log(", Parm: %s = %s", parms[i].c_str(), value[i].c_str());
         }
         Observer::log("\n");
 #endif

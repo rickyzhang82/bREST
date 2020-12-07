@@ -1,5 +1,5 @@
 /**
-Copyright (C) 2018  Ricky Zhang
+Copyright (C) 2020  Ricky Zhang
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -17,9 +17,15 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 */
 
 // Import required libraries
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
-#define DEBUG 0
+// ESP8266 timer
+extern "C"
+{
+  #include "user_interface.h"
+}
+
+#define DEBUG 1
 #define APP_DEBUG 1
 
 #include <bREST.h>
@@ -36,13 +42,27 @@ const char* password = "your_password";
 #include "wifi_settings.h"
 
 // The digital pin to switch on/off the relay
-const int ENABLE_PIN = 13;
+// This is the output pin number for Sonoff S20
+const int ENABLE_PIN = 12;
+// This is the input pin number for E-FW input button
+// The state is high when switch is open.
+const int BUTTON_PIN = 0;
+// This is the output pin number for green LED
+const int GREEN_LED_PIN = 13;
+
+// define timer
+os_timer_t myTimer;
+// define timer cycle in milliseconds
+const uint32_t TIMER_CYCLE_IN_MS = 10;
+
+// button switch debounce in millieseconds
+const long BUTTON_DEBOUNCE = 200;
 
 // Create bREST instance
 bREST rest = bREST();
 
 // WiFi parameters
-IPAddress ip(192, 168, 2, 41);
+IPAddress ip(192, 168, 2, 44);
 IPAddress gateway(192, 168, 2, 1);
 IPAddress subnet_mask(255, 255, 255, 0);
 IPAddress dns(192, 168, 2, 1);
@@ -60,6 +80,12 @@ public:
     PowerPlug(String resource_id): Observer(resource_id) {
         this->isPowerPlugOpen = true;
         this->enablePin = ENABLE_PIN;
+        this->greenLEDPin = GREEN_LED_PIN;
+        this->buttonInputPin = BUTTON_PIN;
+        this->debounce = BUTTON_DEBOUNCE;
+        this->buttonState = LOW;
+        this->previous = HIGH;
+        this->timeToToggle = 0;
     }
 
     virtual ~PowerPlug(){}
@@ -115,17 +141,46 @@ public:
 
     void setup() {
         pinMode(enablePin, OUTPUT);
+        pinMode(buttonInputPin, INPUT);
+        pinMode(greenLEDPin, OUTPUT);
         openSwitch();
     }
 
     void openSwitch() {
         digitalWrite(enablePin, 0);
+        digitalWrite(greenLEDPin, 0);
         isPowerPlugOpen = true;
     }
 
     void closeSwitch() {
         digitalWrite(enablePin, 1);
+        digitalWrite(greenLEDPin, 1);
         isPowerPlugOpen = false;
+    }
+
+    bool checkButton() {
+      int reading = digitalRead(buttonInputPin);
+
+      // if the input just went from HIGH and LOW and we've waited long enough
+      // to ignore any noise on the circuit, toggle the output pin and remember
+      // the time
+      if (reading == LOW && previous == HIGH && millis() - timeToToggle > debounce) {
+        if (buttonState == LOW) {
+          buttonState = HIGH;
+          closeSwitch();
+          log("Switch button turns on the power!\n");
+        } else {
+          buttonState = LOW;
+          openSwitch();
+          log("Switch button turns off the power!\n");
+        }
+
+        timeToToggle = millis();
+      }
+
+      previous = reading;
+
+      return (buttonState == HIGH);
     }
 
     bool isSwitchOpen() {
@@ -134,11 +189,22 @@ public:
 
 protected:
     int enablePin;
+    int greenLEDPin;
+    int buttonInputPin;
+    int buttonState;
+    int previous;
+    long timeToToggle;
+    long debounce;
     bool isPowerPlugOpen;
 };
 
 // Step 2: Allocate resource with unique ID
 PowerPlug powerPlug("switch");
+
+// Timer-controlled read in of digital input
+void timerCallback(void *pArg) {
+  powerPlug.checkButton();
+}
 
 void setup(void)
 {
@@ -166,6 +232,10 @@ void setup(void)
 
   // Step 3: Add observer
   rest.add_observer(&powerPlug);
+
+  // Configure timer
+  os_timer_setfn(&myTimer, timerCallback, NULL);
+  os_timer_arm(&myTimer, TIMER_CYCLE_IN_MS, true);
 }
 
 void loop() {
