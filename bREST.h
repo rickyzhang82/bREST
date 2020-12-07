@@ -8,23 +8,44 @@
 
 #include "aREST.h"
 
+// Enable it if print out bREST debug message. Default is disable.
 #ifndef DEBUG
-#define DEBUG 0
+#define DEBUG                   0
 #endif
 
+// Enable it if print out Observer sub class debug message. Default is disable.
 #ifndef APP_DEBUG
-#define APP_DEBUG 0
+#define APP_DEBUG               0
 #endif
 
-const int MAX_URL_LENGTH    = 256;
-const int MAX_NUM_PARMS     = 10;
-const int MAX_NUM_RESOURCES = 20;
+// Set maximum length of URL, eg "/pin1/?mode=digital&value=high". Default is 256.
+#ifndef MAX_URL_LENGTH
+#define MAX_URL_LENGTH          256
+#endif
+
+// Set maximum number of URL parameters. Default is 10.
+#ifndef MAX_NUM_PARMS
+#define MAX_NUM_PARMS           10
+#endif
+
+// Set maximum number of observer resources. Default is 20.
+#ifndef MAX_NUM_RESOURCES
+#define MAX_NUM_RESOURCES       20
+#endif
+
+// Set maximum length of HTTP body. Default is 1.
+#ifndef MAX_HTTP_BODY_LENGTH
+#define MAX_HTTP_BODY_LENGTH    1
+#endif
 
 typedef enum {
     STATE_START,
-    STATE_ACCEPT,
     STATE_IGNORE,
-    STATE_OVERFLOW,
+    STATE_IGNORE_URI,
+    STATE_ACCEPT_URI,
+    STATE_OVERFLOW_URI,
+    STATE_ACCEPT_BODY,
+    STATE_OVERFLOW_BODY,
     STATE_IN_GET_METHOD_G,
     STATE_IN_GET_METHOD_E,
     STATE_IN_GET_METHOD_T,
@@ -32,7 +53,12 @@ typedef enum {
     STATE_IN_PUT_METHOD_U,
     STATE_IN_PUT_METHOD_T,
     STATE_IN_FIRST_SPACE,
-    STATE_IN_URI
+    STATE_IN_URI,
+    STATE_IN_FIRST_CR,
+    STATE_IN_SECOND_CR,
+    STATE_IN_FIRST_LF,
+    STATE_IN_SECOND_LF,
+    STATE_IN_BODY
 } PARSER_STATE;
 
 typedef enum {
@@ -102,7 +128,7 @@ public:
         int i, j, count = 0;
         va_list argv;
         const char* fmt = formatString.c_str();
-        va_start(argv, fmt);
+        va_start(argv, formatString);
         for(i = 0, j = 0; fmt[i] != '\0'; i++) {
             if (fmt[i] == '%') {
                 count++;
@@ -151,19 +177,23 @@ class bREST: public aREST {
 
 protected:
     PARSER_STATE parser_state;
+    PARSER_STATE uri_final_state;
+    PARSER_STATE http_body_final_state;
     HTTP_METHOD http_method;
     String http_url;
     unsigned int url_length_counter;
+    unsigned int body_length_counter;
     String parms[MAX_NUM_PARMS];
     String value[MAX_NUM_PARMS];
     String resource_id;
     unsigned int parm_counter;
     Observer* observer_list[MAX_NUM_RESOURCES];
     unsigned int observer_counter;
+    unsigned char http_body[MAX_HTTP_BODY_LENGTH];
 
 public:
     bREST():aREST() {
-        reset_state_vars();
+        reset_uri_state_vars();
         observer_counter = 0;
     }
 
@@ -173,7 +203,8 @@ public:
      * @param rest_port REST server port number
      */
     bREST(char* rest_remote_server, int rest_port): aREST(rest_remote_server, rest_port) {
-        reset_state_vars();
+        reset_uri_state_vars();
+        reset_body_state_vars();
         observer_counter = 0;
     }
 
@@ -267,6 +298,22 @@ public:
     }
 
     /**
+     * @brief get_http_body Get parsed HTTP body
+     * @return HTTP body buffer
+     */
+    unsigned char* get_http_body() {
+        return this->http_body;
+    }
+
+    /**
+     * @brief get_http_body_length Get the length of HTTP body
+     * @return  length of HTTP body
+     */
+    unsigned int get_http_body_length() {
+        return this->body_length_counter;
+    }
+
+    /**
      * @brief get_method get string value of http method
      * @param method
      * @return a string of http method
@@ -299,43 +346,44 @@ protected:
      */
     void process(char c) override {
         switch(parser_state) {
-        // once accept state, ignore rest of HTTTP conversation
-        case STATE_ACCEPT:
-            break;
         // The length of URI is too long.
-        case STATE_OVERFLOW:
+        case STATE_OVERFLOW_URI:
+            if (c == '\r')
+                parser_state = STATE_IN_FIRST_CR;
             break;
+
         case STATE_START:
             if (c == 'G')
                 parser_state = STATE_IN_GET_METHOD_G;
             else if (c == 'P')
                 parser_state = STATE_IN_PUT_METHOD_P;
             else
-                parser_state = STATE_IGNORE;
+                parser_state = STATE_IGNORE_URI;
             break;
         // parse GET
         case STATE_IN_GET_METHOD_G:
-            parser_state = (c == 'E')? STATE_IN_GET_METHOD_E: STATE_IGNORE;
+            parser_state = (c == 'E')? STATE_IN_GET_METHOD_E: STATE_IGNORE_URI;
             break;
         case STATE_IN_GET_METHOD_E:
-            parser_state = (c == 'T')? STATE_IN_GET_METHOD_T: STATE_IGNORE;
+            parser_state = (c == 'T')? STATE_IN_GET_METHOD_T: STATE_IGNORE_URI;
             break;
 
         // parse PUT
         case STATE_IN_PUT_METHOD_P:
-            parser_state = (c == 'U')? STATE_IN_PUT_METHOD_U: STATE_IGNORE;
+            parser_state = (c == 'U')? STATE_IN_PUT_METHOD_U: STATE_IGNORE_URI;
             break;
         case STATE_IN_PUT_METHOD_U:
-            parser_state = (c == 'T')? STATE_IN_PUT_METHOD_T: STATE_IGNORE;
+            parser_state = (c == 'T')? STATE_IN_PUT_METHOD_T: STATE_IGNORE_URI;
             break;
 
         // end of parsing PUT and GET
         case STATE_IN_GET_METHOD_T:
-            parser_state = (c == ' ')? STATE_IN_FIRST_SPACE: STATE_IGNORE;
+            parser_state = (c == ' ')? STATE_IN_FIRST_SPACE: STATE_IGNORE_URI;
             http_method = HTTP_METHOD_GET;
             break;
+
         case STATE_IN_PUT_METHOD_T:
-            parser_state = (c == ' ')? STATE_IN_FIRST_SPACE: STATE_IGNORE;
+            parser_state = (c == ' ')? STATE_IN_FIRST_SPACE: STATE_IGNORE_URI;
             http_method = HTTP_METHOD_PUT;
             break;
 
@@ -345,32 +393,84 @@ protected:
                 url_length_counter += 1;
                 http_url += c;
             } else
-                parser_state = STATE_IGNORE;
+                parser_state = STATE_IGNORE_URI;
             break;
 
         case STATE_IN_URI:
-            if (url_length_counter > MAX_URL_LENGTH)  {
-                parser_state = STATE_OVERFLOW;
+            if (url_length_counter >= MAX_URL_LENGTH)  {
+                parser_state = STATE_OVERFLOW_URI;
+                uri_final_state = STATE_OVERFLOW_URI;
                 break;
             }
 
-            if (c == ' ')
-                parser_state = STATE_ACCEPT;
-            else if (c == '\n')
-                reset_state_vars();
-            else {
+            if (c == ' ') {
+                parser_state = STATE_IGNORE;
+                uri_final_state = STATE_ACCEPT_URI;
+            } else if (c == '\r') {
+                reset_uri_state_vars();
+                parser_state = STATE_IN_FIRST_CR;
+            } else if (c == '\n') {
+                reset_uri_state_vars();
+                parser_state = STATE_IGNORE;
+            } else {
                 url_length_counter += 1;
                 http_url += c;
             }
             break;
 
-        case STATE_IGNORE:
-            // once get LF, return to start state
-            if (c== '\n')
-                reset_state_vars();
+        case STATE_IGNORE_URI:
+            if (c == '\r') {
+                reset_uri_state_vars();
+                parser_state = STATE_IN_FIRST_CR;
+            }
             break;
-        }
 
+        case STATE_IGNORE:
+            if (c == '\r')
+                parser_state = STATE_IN_FIRST_CR;
+            break;
+
+        case STATE_IN_FIRST_CR:
+            if (c == '\n')
+                parser_state = STATE_IN_FIRST_LF;
+            else
+                parser_state = STATE_IGNORE;
+            break;
+
+        case STATE_IN_FIRST_LF:
+            if (c == '\r')
+                parser_state = STATE_IN_SECOND_CR;
+            else
+                parser_state = STATE_IGNORE;
+            break;
+
+        case STATE_IN_SECOND_CR:
+            if (c == '\n')
+                parser_state = STATE_IN_SECOND_LF;
+            else
+                parser_state = STATE_IGNORE;
+            break;
+
+        case STATE_IN_SECOND_LF:
+            parser_state = STATE_IN_BODY;
+            http_body[body_length_counter++] = c;
+            break;
+
+        case STATE_IN_BODY:
+            if (body_length_counter >= MAX_HTTP_BODY_LENGTH) {
+                parser_state = STATE_OVERFLOW_BODY;
+                http_body_final_state = STATE_OVERFLOW_BODY;
+                break;
+            }
+            http_body[body_length_counter++] = c;
+            break;
+
+        case STATE_OVERFLOW_BODY:
+            if (c == '\r')
+                parser_state = STATE_IN_FIRST_CR;
+            break;
+
+        } // end of switch
     }
 
     /**
@@ -381,12 +481,12 @@ protected:
      */
     bool send_command(bool headers, bool decodeArgs) override {
 
-        if (parser_state == STATE_OVERFLOW) {
+        if (uri_final_state == STATE_OVERFLOW_URI) {
             append_msg_overflow(headers);
             return true;
         }
 
-        if (parser_state != STATE_ACCEPT) {
+        if (uri_final_state != STATE_ACCEPT_URI) {
             append_msg_invalid_request(headers);
             return true;
         }
@@ -400,16 +500,11 @@ protected:
         }
 
 #if DEBUG
-        Serial.print(" Debug bREST.send_command() -- ");
-        Serial.print("Method: ");
-        Serial.print(bREST::get_method(http_method));
+        Observer::log("bREST::send_command() -- Method: %s", bREST::get_method(http_method));
         for(int i = 0; i < parm_counter; i++) {
-            Serial.print(" Parm:");
-            Serial.print(parms[i]);
-            Serial.print("=");
-            Serial.print(value[i]);
+            Observer::log(", Parm: %s = %s", parms[i], value[i]);
         }
-        Serial.print(" Debug end -- ");
+        Observer::log("\n");
 #endif
 
         if(!notify_observers(headers)) {
@@ -489,8 +584,7 @@ protected:
     bool parse_url() {
 
 #if DEBUG
-            Serial.print("Parse URL:");
-            Serial.println(http_url);
+            Observer::log("bREST::Parse URL: %s\n", http_url.c_str());
 #endif
 
         // preprocess http://host:port
@@ -553,18 +647,26 @@ protected:
 
     void reset_status() override {
         aREST::reset_status();
-        reset_state_vars();
+        reset_uri_state_vars();
+        reset_body_state_vars();
     }
 
     /**
      * @brief reset_state_vars reset state variable for every line of HTTP conversation.
      */
-    void reset_state_vars() {
+    void reset_uri_state_vars() {
         parser_state = STATE_START;
+        uri_final_state = STATE_START;
         http_method = HTTP_METHOD_UNSET;
         http_url = String("");
         url_length_counter = 0;
         parm_counter = 0;
+    }
+
+    void reset_body_state_vars() {
+        body_length_counter = 0;
+        http_body_final_state = STATE_START;
+        memset((void*)http_body, 0, MAX_HTTP_BODY_LENGTH);
     }
 };
 
