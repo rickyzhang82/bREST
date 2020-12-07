@@ -12,9 +12,12 @@
   - how to return an arbitary JSON string back to client.
   Update by Ricky Zhang in 2018
 */
-
 // Import required libraries
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
+
+#define DEBUG 0
+#define APP_DEBUG 1
+
 #include <bREST.h>
 
 // Create bREST instance
@@ -42,20 +45,17 @@ public:
     virtual ~CalculatorResource(){}
     // override call back function
     void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
-        Serial.println("*************************************");
-        Serial.println("fire SerialPort update()!");
-        Serial.print("HTTP Method:");
-        Serial.println(bREST::get_method(method));
-        Serial.println("Parameters and Value:");
+        Observer::log("*************************************\n");
+        Observer::log("Fire update() by a HTTP Request!\n");
+        Observer::log("HTTP Method: %s\n", bREST::get_method(method).c_str());
+        Observer::log("Parameters and Value:\n");
         float sum = 0;
-        // Iterate parameter array and value array
+         // Iterate parameter array and value array
         for (int i = 0; i < parm_count; i++) {
-            Serial.print(parms[i]);
-            Serial.print(" = ");
-            Serial.println(value[i]);
+            Observer::log("%s = %s\n", parms[i], value[i]);
             sum += value[i].toFloat();
         }
-        Serial.println("*************************************");
+        Observer::log("*************************************\n");
         // Send back JSON message to client.
         rest->start_json_msg();
         rest->append_key_value_pair_to_json(String("message"), String("CalculatorResource get fire up!"));
@@ -80,17 +80,16 @@ void setup(void)
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Observer::log(".");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  Observer::log("\nWiFi connected\n");
 
   // Start the server
   server.begin();
-  Serial.println("Server started");
+  Observer::log("Server started\n");
 
   // Print the IP address
-  Serial.println(WiFi.localIP());
+  Observer::log("Local IP: %s\n", WiFi.localIP().toString().c_str());
 
   // Step 3: Add observer
   rest.add_observer(&myESP8266Calculator);

@@ -80,15 +80,6 @@ protected:
         return found_index;
     }
 
-    void log(String fmt,...) {
-#if APP_DEBUG
-        va_list args;
-        va_start(args, fmt);
-        aprintf(fmt.c_str(), args);
-        va_end(args);
-#endif
-    }
-
 public:
     Observer(String id) {
         this->id = id;
@@ -105,26 +96,20 @@ public:
      */
     virtual void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) = 0;
 
-    /**
-     * @brief get_resource_id get resource ID
-     * @return a string of resource ID
-     */
-    String get_id() {
-        return id;
-    }
+    static void log(String formatString,...) {
+#if APP_DEBUG
 
-private:
-    int aprintf(const char* str, ...) {
         int i, j, count = 0;
         va_list argv;
-        va_start(argv, str);
-        for(i = 0, j = 0; str[i] != '\0'; i++) {
-            if (str[i] == '%') {
+        const char* fmt = formatString.c_str();
+        va_start(argv, fmt);
+        for(i = 0, j = 0; fmt[i] != '\0'; i++) {
+            if (fmt[i] == '%') {
                 count++;
 
-                Serial.write(reinterpret_cast<const uint8_t*>(str+j), i-j);
+                Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
 
-                switch (str[++i]) {
+                switch (fmt[++i]) {
                     case 'd': Serial.print(va_arg(argv, int));
                         break;
                     case 'l': Serial.print(va_arg(argv, long));
@@ -146,11 +131,20 @@ private:
         va_end(argv);
 
         if(i > j) {
-            Serial.write(reinterpret_cast<const uint8_t*>(str+j), i-j);
+            Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
         }
 
-        return count;
+#endif
     }
+
+    /**
+     * @brief get_resource_id get resource ID
+     * @return a string of resource ID
+     */
+    String get_id() {
+        return id;
+    }
+
 };
 
 class bREST: public aREST {

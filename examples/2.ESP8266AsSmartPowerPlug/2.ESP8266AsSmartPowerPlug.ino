@@ -15,11 +15,10 @@ You should have received a copy of the GNU General Public License along
 with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
-
 // Import required libraries
-#include <ESP8266WiFi.h>
+#include <WiFi.h>
 
-#define DEBUG 0
+#define DEBUG 1
 #define APP_DEBUG 1
 
 #include <bREST.h>
@@ -66,22 +65,17 @@ public:
 
     // override call back function
     void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
-        log("*************************************\n");
-        log("fire SerialPort update()!\n");
-        log("HTTP Method:");
-        log(bREST::get_method(method));
-        log("\n");
-        log("Parameters and Value:\n");
+        Observer::log("*************************************\n");
+        Observer::log("Fire update() by a HTTP Request!\n");
+        Observer::log("HTTP Method: %s\n", bREST::get_method(method).c_str());
+        Observer::log("Parameters and Value:\n");
         float sum = 0;
         // Iterate parameter array and value array
         for (int i = 0; i < parm_count; i++) {
-            log(parms[i]);
-            log(" = ");
-            log(value[i]);
-            log("\n");
+            Observer::log("%s = %s\n", parms[i], value[i]);
             sum += value[i].toFloat();
         }
-        log("*************************************\n");
+        Observer::log("*************************************\n");
 
         switch(method) {
         case HTTP_METHOD_GET:
@@ -167,20 +161,19 @@ void setup(void)
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
+    Observer::log(".");
   }
-  Serial.println("");
-  Serial.println("WiFi connected");
+  Observer::log("\nWiFi connected\n");
 
   // setup powerPlug
   powerPlug.setup();
 
   // Start the server
   server.begin();
-  Serial.println("Server started");
+  Observer::log("Server started\n");
 
   // Print the IP address
-  Serial.println(WiFi.localIP());
+  Observer::log("Local IP: %s\n", WiFi.localIP().toString().c_str());
 
   // Step 3: Add observer
   rest.add_observer(&powerPlug);
