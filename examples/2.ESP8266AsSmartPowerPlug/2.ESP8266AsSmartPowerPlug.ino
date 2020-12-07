@@ -69,7 +69,7 @@ public:
         log("*************************************\n");
         log("fire SerialPort update()!\n");
         log("HTTP Method:");
-        log(get_method(method));
+        log(bREST::get_method(method));
         log("\n");
         log("Parameters and Value:\n");
         float sum = 0;

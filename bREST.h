@@ -113,22 +113,6 @@ public:
         return id;
     }
 
-    /**
-     * @brief get_method get string value of http method
-     * @param method
-     * @return a string of http method
-     */
-    String get_method(HTTP_METHOD method) {
-        switch(method) {
-        case HTTP_METHOD_GET:
-            return "GET";
-        case HTTP_METHOD_PUT:
-            return "PUT";
-        default:
-            return "UNSET";
-        }
-    }
-
 private:
     int aprintf(const char* str, ...) {
         int i, j, count = 0;
@@ -288,6 +272,22 @@ public:
         addToBufferF(F("}\r\n"));
     }
 
+    /**
+     * @brief get_method get string value of http method
+     * @param method
+     * @return a string of http method
+     */
+    static String get_method(HTTP_METHOD method) {
+        switch(method) {
+        case HTTP_METHOD_GET:
+            return "GET";
+        case HTTP_METHOD_PUT:
+            return "PUT";
+        default:
+            return "UNSET";
+        }
+    }
+
 protected:
     /**
      * @brief process parses one and only one Request-Line i.e. (Method SP Request-URI SP HTTP-Version CRLF). Disregard the rest of HTTP conversation.
@@ -408,8 +408,8 @@ protected:
 #if DEBUG
         Serial.print(" Debug bREST.send_command() -- ");
         Serial.print("Method: ");
-        Serial.print(this->get_method(method));
-        for(int i = 0; i < parm_count; i++) {
+        Serial.print(bREST::get_method(http_method));
+        for(int i = 0; i < parm_counter; i++) {
             Serial.print(" Parm:");
             Serial.print(parms[i]);
             Serial.print("=");

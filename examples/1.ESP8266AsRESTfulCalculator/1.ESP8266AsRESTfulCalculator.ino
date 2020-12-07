@@ -45,7 +45,7 @@ public:
         Serial.println("*************************************");
         Serial.println("fire SerialPort update()!");
         Serial.print("HTTP Method:");
-        Serial.println(get_method(method));
+        Serial.println(bREST::get_method(method));
         Serial.println("Parameters and Value:");
         float sum = 0;
         // Iterate parameter array and value array
