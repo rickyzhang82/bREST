@@ -66,21 +66,6 @@ public:
 
     // override call back function
     void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
-        Observer::log("*************************************\n");
-        Observer::log("Fire update() by a HTTP Request!\n");
-        Observer::log("HTTP Method: %s\n", bREST::get_method(method).c_str());
-        Observer::log("Parameters and Value:\n");
-        float sum = 0;
-        // Iterate parameter array and value array
-        for (int i = 0; i < parm_count; i++) {
-            log(parms[i]);
-            log(" = ");
-            log(value[i]);
-            log("\n");
-            sum += value[i].toFloat();
-        }
-        Observer::log("*************************************\n");
-
         switch(method) {
         case HTTP_METHOD_GET:
             // Send back JSON message to client.

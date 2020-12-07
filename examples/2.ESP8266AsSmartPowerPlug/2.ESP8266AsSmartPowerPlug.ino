@@ -64,20 +64,7 @@ public:
     virtual ~PowerPlug(){}
 
     // override call back function
-    void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
-        Observer::log("*************************************\n");
-        Observer::log("Fire update() by a HTTP Request!\n");
-        Observer::log("HTTP Method: %s\n", bREST::get_method(method).c_str());
-        Observer::log("Parameters and Value:\n");
-        float sum = 0;
-        // Iterate parameter array and value array
-        for (int i = 0; i < parm_count; i++) {
-            Observer::log("%s = %s\n", parms[i], value[i]);
-            sum += value[i].toFloat();
-        }
-        Observer::log("*************************************\n");
-
-        switch(method) {
+    void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {        switch(method) {
         case HTTP_METHOD_GET:
             // Send back JSON message to client.
             rest->start_json_msg();
