@@ -812,16 +812,16 @@ template <typename T>
 void handle_proto(T& serial, bool headers, uint8_t read_delay, bool decode)
 {
 #if DEBUG
-  log("aREST::handle_proto -- scanning proto string...\n");
+  log("aREST::handle_proto -- scanning proto string with delay(%d)...\n", read_delay);
 #endif
   // Check if there is data available to read
   while (serial.available()) {
 
     // Get the server answer
     char c = serial.read();
-    delay(read_delay);
-    answer = answer + c;
-    //if (DEBUG_MODE) {Serial.print(c);}
+    if (0 != read_delay)
+        delay(read_delay);
+    //answer = answer + c;
 
     // Process data
     process(c);
