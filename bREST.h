@@ -8,16 +8,6 @@
 
 #include "aREST.h"
 
-// Enable it if print out bREST debug message. Default is disable.
-#ifndef DEBUG
-#define DEBUG                   0
-#endif
-
-// Enable it if print out Observer sub class debug message. Default is disable.
-#ifndef APP_DEBUG
-#define APP_DEBUG               0
-#endif
-
 // Set maximum length of URL, eg "/pin1/?mode=digital&value=high". Default is 256.
 #ifndef MAX_URL_LENGTH
 #define MAX_URL_LENGTH          256
@@ -121,47 +111,6 @@ public:
      * @param rest bREST object for appending returned JSON message
      */
     virtual void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) = 0;
-
-    static void log(String formatString,...) {
-#if APP_DEBUG
-
-        int i, j, count = 0;
-        va_list argv;
-        const char* fmt = formatString.c_str();
-        va_start(argv, formatString);
-        for(i = 0, j = 0; fmt[i] != '\0'; i++) {
-            if (fmt[i] == '%') {
-                count++;
-
-                Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
-
-                switch (fmt[++i]) {
-                    case 'd': Serial.print(va_arg(argv, int));
-                        break;
-                    case 'l': Serial.print(va_arg(argv, long));
-                        break;
-                    case 'f': Serial.print(va_arg(argv, double));
-                        break;
-                    case 'c': Serial.print((char) va_arg(argv, int));
-                        break;
-                    case 's': Serial.print(va_arg(argv, char *));
-                        break;
-                    case '%': Serial.print("%");
-                        break;
-                    default:;
-                };
-
-                j = i+1;
-            }
-        };
-        va_end(argv);
-
-        if(i > j) {
-            Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
-        }
-
-#endif
-    }
 
     /**
      * @brief get_resource_id get resource ID
@@ -500,11 +449,11 @@ protected:
         }
 
 #if DEBUG
-        Observer::log("bREST::send_command() -- Method: %s", bREST::get_method(http_method).c_str());
+       log("bREST::send_command() -- Method: %s", bREST::get_method(http_method).c_str());
         for(int i = 0; i < parm_counter; i++) {
-            Observer::log(", Parm: %s = %s", parms[i].c_str(), value[i].c_str());
+            log(", Parm: %s = %s", parms[i].c_str(), value[i].c_str());
         }
-        Observer::log("\n");
+        log("\n");
 #endif
 
         if(!notify_observers(headers)) {
@@ -584,7 +533,7 @@ protected:
     bool parse_url() {
 
 #if DEBUG
-            Observer::log("bREST::Parse URL: %s\n", http_url.c_str());
+        log("bREST::Parse URL: %s\n", http_url.c_str());
 #endif
 
         // preprocess http://host:port

@@ -13,7 +13,7 @@
   Update by Ricky Zhang in 2018
 */
 // Import required libraries
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
 #define DEBUG 0
 #define APP_DEBUG 1
@@ -45,17 +45,17 @@ public:
     virtual ~CalculatorResource(){}
     // override call back function
     void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
-        Observer::log("*************************************\n");
-        Observer::log("Fire update() by a HTTP Request!\n");
-        Observer::log("HTTP Method: %s\n", bREST::get_method(method).c_str());
-        Observer::log("Parameters and Value:\n");
+        log("*************************************\n");
+        log("Fire update() by a HTTP Request!\n");
+        log("HTTP Method: %s\n", bREST::get_method(method).c_str());
+        log("Parameters and Value:\n");
         float sum = 0;
          // Iterate parameter array and value array
         for (int i = 0; i < parm_count; i++) {
-            Observer::log("%s = %s\n", parms[i], value[i]);
+            log("%s = %s\n", parms[i].c_str(), value[i].c_str());
             sum += value[i].toFloat();
         }
-        Observer::log("*************************************\n");
+        log("*************************************\n");
         // Send back JSON message to client.
         rest->start_json_msg();
         rest->append_key_value_pair_to_json(String("message"), String("CalculatorResource get fire up!"));
@@ -80,16 +80,16 @@ void setup(void)
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Observer::log(".");
+    log(".");
   }
-  Observer::log("\nWiFi connected\n");
+  log("\nWiFi connected\n");
 
   // Start the server
   server.begin();
-  Observer::log("Server started\n");
+  log("Server started\n");
 
   // Print the IP address
-  Observer::log("Local IP: %s\n", WiFi.localIP().toString().c_str());
+  log("Local IP: %s\n", WiFi.localIP().toString().c_str());
 
   // Step 3: Add observer
   rest.add_observer(&myESP8266Calculator);

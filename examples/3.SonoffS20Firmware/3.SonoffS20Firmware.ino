@@ -216,19 +216,19 @@ void setup(void)
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Observer::log(".");
+    log(".");
   }
-  Observer::log("\nWiFi connected\n");
+  log("\nWiFi connected\n");
 
   // setup powerPlug
   powerPlug.setup();
 
   // Start the server
   server.begin();
-  Observer::log("Server started\n");
+  log("Server started\n");
 
   // Print the IP address
-  Observer::log("Local IP: %s\n", WiFi.localIP().toString().c_str());
+  log("Local IP: %s\n", WiFi.localIP().toString().c_str());
 
   // Step 3: Add observer
   rest.add_observer(&powerPlug);

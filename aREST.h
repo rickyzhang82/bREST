@@ -136,6 +136,57 @@
   #endif
 #endif
 
+// Enable it if print out bREST debug message. Default is disable.
+#ifndef DEBUG
+#define DEBUG                   0
+#endif
+
+// Enable it if print out Observer sub class debug message. Default is disable.
+#ifndef APP_DEBUG
+#define APP_DEBUG               0
+#endif
+
+static void log(String formatString,...) {
+#if APP_DEBUG
+
+    int i, j, count = 0;
+    va_list argv;
+    const char* fmt = formatString.c_str();
+    va_start(argv, formatString);
+    for(i = 0, j = 0; fmt[i] != '\0'; i++) {
+        if (fmt[i] == '%') {
+            count++;
+
+            Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
+
+            switch (fmt[++i]) {
+                case 'd': Serial.print(va_arg(argv, int));
+                    break;
+                case 'l': Serial.print(va_arg(argv, long));
+                    break;
+                case 'f': Serial.print(va_arg(argv, double));
+                    break;
+                case 'c': Serial.print((char) va_arg(argv, int));
+                    break;
+                case 's': Serial.print(va_arg(argv, char *));
+                    break;
+                case '%': Serial.print("%");
+                    break;
+                default:;
+            };
+
+            j = i+1;
+        }
+    };
+    va_end(argv);
+
+    if(i > j) {
+        Serial.write(reinterpret_cast<const uint8_t*>(fmt+j), i-j);
+    }
+
+#endif
+}
+
 class aREST {
 
 protected:
@@ -707,6 +758,9 @@ void handle(char * string) {
 }
 
 void handle_proto(char * string) {
+#if DEBUG
+  log("aREST::handle_proto -- scanning proto string...\n");
+#endif
   // Check if there is data available to read
   for (int i = 0; i < strlen(string); i++){
 
@@ -718,8 +772,15 @@ void handle_proto(char * string) {
 
   }
 
+#if DEBUG
+  log("aREST::handle_proto -- finished scanning proto string!\n");
+  log("aREST::handle_proto -- sending command...\n");
+#endif
   // Send command
   send_command(false, false);
+#if DEBUG
+  log("aREST::handle_proto -- sent command!\n");
+#endif
 }
 
 template <typename T, typename V>
@@ -750,7 +811,9 @@ void publish_proto(T& client, const String& eventName, V value) {
 template <typename T>
 void handle_proto(T& serial, bool headers, uint8_t read_delay, bool decode)
 {
-
+#if DEBUG
+  log("aREST::handle_proto -- scanning proto string...\n");
+#endif
   // Check if there is data available to read
   while (serial.available()) {
 
@@ -765,8 +828,15 @@ void handle_proto(T& serial, bool headers, uint8_t read_delay, bool decode)
 
    }
 
+#if DEBUG
+  log("aREST::handle_proto -- finished scanning proto string!\n");
+  log("aREST::handle_proto -- sending command...\n");
+#endif
    // Send command
    send_command(headers, decode);
+#if DEBUG
+  log("aREST::handle_proto -- sent command!\n");
+#endif
 }
 
 #if defined(PubSubClient_h)

@@ -16,7 +16,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 */
 // Import required libraries
-#include <WiFi.h>
+#include <ESP8266WiFi.h>
 
 #define DEBUG 1
 #define APP_DEBUG 1
@@ -148,19 +148,19 @@ void setup(void)
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Observer::log(".");
+    log(".");
   }
-  Observer::log("\nWiFi connected\n");
+  log("\nWiFi connected\n");
 
   // setup powerPlug
   powerPlug.setup();
 
   // Start the server
   server.begin();
-  Observer::log("Server started\n");
+  log("Server started\n");
 
   // Print the IP address
-  Observer::log("Local IP: %s\n", WiFi.localIP().toString().c_str());
+  log("Local IP: %s\n", WiFi.localIP().toString().c_str());
 
   // Step 3: Add observer
   rest.add_observer(&powerPlug);
