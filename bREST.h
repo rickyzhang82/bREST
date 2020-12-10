@@ -51,6 +51,77 @@ typedef enum {
     STATE_IN_BODY
 } PARSER_STATE;
 
+#if DEBUG
+static String get_state_string(PARSER_STATE s) {
+    String a;
+    switch(s) {
+    case STATE_START:
+        a = "STATE_START";
+        break;
+    case STATE_IGNORE:
+        a = "STATE_IGNORE";
+        break;
+    case STATE_IGNORE_URI:
+        a = "STATE_IGNORE_URI";
+        break;
+    case STATE_ACCEPT_URI:
+        a = "STATE_ACCEPT_URI";
+        break;
+    case STATE_OVERFLOW_URI:
+        a = "STATE_OVERFLOW_URI";
+        break;
+    case STATE_ACCEPT_BODY:
+        a = "STATE_ACCEPT_BODY";
+        break;
+    case STATE_OVERFLOW_BODY:
+        a = "STATE_OVERFLOW_BODY";
+        break;
+    case STATE_IN_GET_METHOD_G:
+        a = "STATE_IN_GET_METHOD_G";
+        break;
+    case STATE_IN_GET_METHOD_E:
+        a = "STATE_IN_GET_METHOD_E";
+        break;
+    case STATE_IN_GET_METHOD_T:
+        a = "STATE_IN_GET_METHOD_T";
+        break;
+    case STATE_IN_PUT_METHOD_P:
+        a = "STATE_IN_PUT_METHOD_P";
+        break;
+    case STATE_IN_PUT_METHOD_U:
+        a = "STATE_IN_PUT_METHOD_U";
+        break;
+    case STATE_IN_PUT_METHOD_T:
+        a = "STATE_IN_PUT_METHOD_T";
+        break;
+    case STATE_IN_FIRST_SPACE:
+        a = "STATE_IN_FIRST_SPACE";
+        break;
+    case STATE_IN_URI:
+        a = "STATE_IN_URI";
+        break;
+    case STATE_IN_FIRST_CR:
+        a = "STATE_IN_FIRST_CR";
+        break;
+    case STATE_IN_SECOND_CR:
+        a = "STATE_IN_SECOND_CR";
+        break;
+    case STATE_IN_FIRST_LF:
+        a = "STATE_IN_FIRST_LF";
+        break;
+    case STATE_IN_SECOND_LF:
+        a = "STATE_IN_SECOND_LF";
+        break;
+    case STATE_IN_BODY:
+        a = "STATE_IN_BODY";
+        break;
+    default:
+        a = "UNKNOWN";
+    }
+    return a;
+}
+#endif
+
 typedef enum {
     HTTP_METHOD_GET,
     HTTP_METHOD_PUT,
@@ -132,6 +203,7 @@ protected:
     String http_url;
     unsigned int url_length_counter;
     unsigned int body_length_counter;
+    unsigned int process_char_counter;
     String parms[MAX_NUM_PARMS];
     String value[MAX_NUM_PARMS];
     String resource_id;
@@ -143,6 +215,7 @@ protected:
 public:
     bREST():aREST() {
         reset_uri_state_vars();
+        reset_body_state_vars();
         observer_counter = 0;
     }
 
@@ -262,6 +335,9 @@ public:
         return this->body_length_counter;
     }
 
+    unsigned int get_process_char_counter() {
+        return this->process_char_counter;
+    }
     /**
      * @brief get_method get string value of http method
      * @param method
@@ -294,6 +370,7 @@ protected:
      * @param c one character from character stream
      */
     void process(char c) override {
+        process_char_counter++;
         switch(parser_state) {
         // The length of URI is too long.
         case STATE_OVERFLOW_URI:
@@ -402,6 +479,7 @@ protected:
 
         case STATE_IN_SECOND_LF:
             parser_state = STATE_IN_BODY;
+            http_body_final_state = STATE_IN_BODY;
             http_body[body_length_counter++] = c;
             break;
 
@@ -409,9 +487,8 @@ protected:
             if (body_length_counter >= MAX_HTTP_BODY_LENGTH) {
                 parser_state = STATE_OVERFLOW_BODY;
                 http_body_final_state = STATE_OVERFLOW_BODY;
-                break;
-            }
-            http_body[body_length_counter++] = c;
+            } else
+                http_body[body_length_counter++] = c;
             break;
 
         case STATE_OVERFLOW_BODY:
@@ -429,12 +506,21 @@ protected:
      * @return
      */
     bool send_command(bool headers, bool decodeArgs) override {
-
+#if DEBUG
+        log("uri_final_state(%s), http_body_final_state(%s), parser_state(%s)\n",
+            get_state_string(uri_final_state).c_str(),
+            get_state_string(http_body_final_state).c_str(),
+            get_state_string(parser_state).c_str());
+#endif
         if (uri_final_state == STATE_OVERFLOW_URI) {
-            append_msg_overflow(headers);
+            append_msg_url_overflow(headers);
             return true;
         }
 
+        if (http_body_final_state == STATE_OVERFLOW_BODY) {
+            append_msg_body_overflow(headers);
+            return true;
+        }
         if (uri_final_state != STATE_ACCEPT_URI) {
             append_msg_invalid_request(headers);
             return true;
@@ -502,12 +588,21 @@ protected:
             addToBufferF(F("HTTP/1.1 500\r\nAccess-Control-Allow-Origin: *\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n"));
     }
 
-    void append_msg_overflow(bool headers) {
+    void append_msg_url_overflow(bool headers) {
         if (headers) {
             append_http_header(false);
             addToBufferF(F("{\"message\":\"URL parsing overflow!\",\"code\":502}\r\n"));
         } else {
             addToBufferF(F("\"message\":\"URL parsing overflow!\",\"code\":502\n"));
+        }
+    }
+
+    void append_msg_body_overflow(bool headers) {
+        if (headers) {
+            append_http_header(false);
+            addToBufferF(F("{\"message\":\"HTTP body parsing overflow!\",\"code\":502}\r\n"));
+        } else {
+            addToBufferF(F("\"message\":\"HTTP body parsing overflow!\",\"code\":502\n"));
         }
     }
 
@@ -614,6 +709,7 @@ protected:
 
     void reset_body_state_vars() {
         body_length_counter = 0;
+        process_char_counter = 0;
         http_body_final_state = STATE_START;
         memset((void*)http_body, 0, MAX_HTTP_BODY_LENGTH);
     }
