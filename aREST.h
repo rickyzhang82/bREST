@@ -559,28 +559,13 @@ void handle(ESP8266Client& client){
 #elif defined(ESP8266) || defined (ESP32)
 void handle(WiFiClient& client){
 
-  if (DEBUG_MODE) {
-    Serial.print("Memory loss before available:");
-    Serial.println(freeMemory - ESP.getFreeHeap(),DEC);
-    freeMemory = ESP.getFreeHeap();
-  }
-
   if (client.available()) {
 
-    if (DEBUG_MODE) {
-      Serial.print("Memory loss before handling:");
-      Serial.println(freeMemory - ESP.getFreeHeap(),DEC);
-      freeMemory = ESP.getFreeHeap();
-    }
-
+#if DEBUG
+  log("aREST::handle() in ESP8266 or ESP32 by WiFiClient received request.\n");
+#endif
     // Handle request
     handle_proto(client,true,0,true);
-
-    if (DEBUG_MODE) {
-      Serial.print("Memory loss after handling:");
-      Serial.println(freeMemory - ESP.getFreeHeap(),DEC);
-      freeMemory = ESP.getFreeHeap();
-    }
 
     // Answer
     sendBuffer(client,0,0);
@@ -622,8 +607,9 @@ void handle(WiFiClient& client){
 
   if (client.available()) {
 
-    if (DEBUG_MODE) {Serial.println("Request received");}
-
+#if DEBUG
+  log("aREST::handle() in WIFI_h received request.\n");
+#endif
     // Handle request
     handle_proto(client,true,0,true);
 
@@ -650,8 +636,9 @@ void handle(WiFiClient& client){
 
   if (client.available()) {
 
-    if (DEBUG_MODE) {Serial.println("Request received");}
-
+#if DEBUG
+  log("aREST::handle() in WiFi_h received request.\n");
+#endif
     // Handle request
     handle_proto(client,true,0,true);
 
@@ -826,7 +813,7 @@ void handle_proto(T& serial, bool headers, uint8_t read_delay, bool decode)
     // Process data
     process(c);
 
-   }
+  }
 
 #if DEBUG
   log("aREST::handle_proto -- finished scanning proto string!\n");
