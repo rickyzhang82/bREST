@@ -64,7 +64,8 @@ public:
     virtual ~PowerPlug(){}
 
     // override call back function
-    void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {        switch(method) {
+    void update(HTTP_METHOD method, String parms[], String value[], int parm_count, bREST* rest) override {
+        switch(method) {
         case HTTP_METHOD_GET:
             // Send back JSON message to client.
             rest->start_json_msg();
